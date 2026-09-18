@@ -1,27 +1,39 @@
+# CLAUDE.md
+
 # LendIt Project Rules for Claude
 
-## Project Overview
+---
 
-You are helping build:
+# Project Overview
+
+You are assisting with the development of:
 
 **LendIt: Department Equipment Loan Desk**
 
-A small Flask web application that replaces a university department's paper equipment loan register.
+A Flask web application that replaces a university department's paper equipment loan register.
 
-The application allows:
+The system manages:
 
-- Public users to view equipment catalogue
-- Students to create accounts and request equipment
-- Admins to manage equipment and approve/reject requests
-- Students and admins to have different permissions
+- Equipment catalogue
+- Student accounts
+- Equipment loan requests
+- Admin approval workflow
+- Equipment return tracking
 
-This is a learning project. The code must remain simple and easy for a beginner to understand.
+The project is built as a learning project.
+
+The final code must be:
+
+- Simple
+- Beginner readable
+- Easy to explain in a viva/interview
+- Secure against common mistakes
 
 ---
 
 # Technology Stack
 
-Use only:
+Use ONLY:
 
 - Python 3
 - Flask
@@ -29,98 +41,78 @@ Use only:
 - SQLite
 - Flask-Login
 - Jinja2 Templates
-- Bootstrap 5 via CDN
+- Bootstrap 5 CDN
 
-Do not add any new library, package, or framework without asking first.
+Do NOT add:
+
+- New libraries
+- New frameworks
+- New database systems
+
+Ask before adding anything outside this stack.
 
 ---
 
-# Coding Style Rules
+# General Coding Rules
 
-## Keep Code Beginner Friendly
+## Keep Code Simple
 
-- Write simple readable code.
-- Avoid unnecessary advanced patterns.
-- Avoid complex architecture.
-- Use clear variable names.
-- Add short comments only where needed.
-- Do not over-engineer.
+Write code that a beginner can understand.
 
-The final code should be explainable in a viva/interview.
+Prefer:
+
+- Simple Flask routes
+- Clear variable names
+- Small functions
+- Straightforward logic
+
+Avoid:
+
+- Over-engineering
+- Complex architecture
+- Unnecessary classes
+- Advanced patterns
 
 ---
 
 # File Modification Rules
 
-Before making changes:
+Before changing anything:
 
-1. Understand the existing project structure.
-2. Only modify files directly related to the requested feature.
-3. Do not rewrite unrelated files.
-4. Do not create unnecessary files.
+1. Read the existing code.
+2. Understand the current structure.
+3. Identify required files.
 
-If a change requires modifying additional files, explain why first.
+Rules:
 
----
-
-# Security Rules (Very Important)
-
-Security is a priority.
-
-Always enforce rules on the backend, not only by hiding buttons.
-
-Never trust:
-
-- URLs
-- Form submissions
-- User input
-
-Always check permissions.
-
-Examples:
-
-- Students cannot access admin routes.
-- Students cannot approve requests.
-- Students cannot delete equipment.
-- Students cannot cancel another student's request.
-- Users can only view their own requests.
+- Only modify files related to the requested feature.
+- Do not rewrite working code unnecessarily.
+- Do not delete files without permission.
+- Do not create unnecessary files.
 
 ---
 
-# Authentication Rules
+# Project Documentation Rules
 
-Use:
+Always follow:
 
-- Flask-Login for authentication.
-- werkzeug.security for password hashing.
+- PLAN.md for features and structure.
+- CLAUDE.md for coding rules.
+- AGENTS.md for agent behavior.
 
-Never store plain text passwords.
-
-Use:
-
-- .env file for secrets.
-- python-dotenv for loading environment variables.
-
-Never hardcode:
-
-- SECRET_KEY
-- Passwords
-- Sensitive configuration
+If something is unclear, check PLAN.md first.
 
 ---
 
 # Database Rules
 
-Use:
+Use Flask-SQLAlchemy with SQLite.
 
-- Flask-SQLAlchemy
-- SQLite
+The database contains only these main tables:
 
-Keep database models simple.
+---
 
-Main tables:
-
-## User
+## User Table
 
 Fields:
 
@@ -130,7 +122,14 @@ Fields:
 - password_hash
 - role
 
-## Equipment
+Role values:
+
+- student
+- admin
+
+---
+
+## Equipment Table
 
 Fields:
 
@@ -140,7 +139,14 @@ Fields:
 - description
 - status
 
-## Request
+Status values:
+
+- Available
+- On loan
+
+---
+
+## Request Table
 
 Fields:
 
@@ -152,119 +158,308 @@ Fields:
 - status
 - created_at
 
+Status values:
+
+- Pending
+- Approved
+- Rejected
+- Returned
+- Cancelled
+
+---
+
+# Database Relationship Rules
+
+User:
+
+One user can create many requests.
+User (1) -------- (Many) Request
+
+Equipment:
+
+One equipment item can have many requests over time.
+Equipment (1) -------- (Many) Request
+
 Do not create extra tables unless required.
 
 ---
 
-# Feature Development Rules
+# Authentication Rules
 
-When adding a feature:
+Use:
 
-Follow this order:
+- Flask-Login
+- werkzeug.security
 
-1. Understand the requirement.
-2. Check existing code.
-3. Explain the implementation plan briefly.
-4. Modify only required files.
-5. Test the feature.
-6. Explain what changed.
+Requirements:
+
+- Passwords must always be hashed.
+- Never store plain passwords.
+- Use UserMixin for the User model.
+- Load secrets from .env.
+
+Never hardcode:
+
+- SECRET_KEY
+- Passwords
+- Sensitive values
 
 ---
 
-# Error Handling Rules
+# Environment Rules
 
-When fixing bugs:
+Use:
+
+.env
+
+Example:
+SECRET_KEY=value
+
+Load environment variables using python-dotenv.
+
+---
+
+# Route Rules
+
+Follow routes exactly from PLAN.md.
+
+Do not create random routes.
+
+---
+
+# Public Routes
+/
+/signup
+/login
+/logout
+
+No login required.
+
+---
+
+# Student Routes
+/dashboard
+/request/<equipment_id>
+/my-requests
+/request/<request_id>/cancel
+
+Student rules:
+
+- Only see own requests.
+- Only cancel own pending requests.
+- Maximum 2 active requests.
+
+---
+
+# Admin Routes
+
+/admin
+/admin/equipment
+/admin/equipment/add
+/admin/equipment/<id>/edit
+/admin/equipment/<id>/delete
+/admin/requests
+/admin/request/<id>/approve
+/admin/request/<id>/reject
+/admin/request/<id>/return
+
+Admin rules:
+
+- Only admin role can access.
+- Students must receive access denied.
+
+---
+
+# Security Rules (Highest Priority)
+
+Never depend only on hiding buttons.
+
+Every route must verify:
+
+## Authentication
+
+Is the user logged in?
+
+Use:
+@login_required
+
+---
+
+## Authorization
+
+Check user permissions.
+
+Examples:
+
+Admin actions:
+
+- Add equipment
+- Edit equipment
+- Delete equipment
+- Approve request
+- Reject request
+- Return equipment
+
+must require:
+current_user.role == "admin"
+
+---
+
+Ownership:
+
+Students can only modify their own requests.
+
+Example:
+
+A student cannot:
+
+- Cancel another student's request.
+- View another student's private requests.
+
+---
+
+# Feature Development Process
+
+When implementing a feature:
+
+Follow this order:
+
+## Step 1
+
+Read:
+
+- CLAUDE.md
+- PLAN.md
+
+---
+
+## Step 2
+
+Explain:
+
+Implementation plan:
+
+- What will be built.
+- Which files will change.
+- Any database changes.
+
+---
+
+## Step 3
+
+Write code only after the plan.
+
+---
+
+## Step 4
+
+Test the feature.
+
+Check:
+
+- Normal flow.
+- Invalid input.
+- Permission problems.
+- Direct URL access.
+
+---
+
+# Debugging Rules
+
+When fixing errors:
 
 Do not randomly change code.
 
 Follow:
 
-1. Read the error message.
-2. Identify the root cause.
-3. Explain the problem.
-4. Apply the smallest fix.
-5. Explain why the fix works.
+1. Read the complete error.
+2. Explain the cause.
+3. Find the smallest fix.
+4. Apply the fix.
+5. Explain why it works.
 
 ---
 
-# After Every Change
+# Template Rules
 
-After completing any modification, always provide:
+Use:
 
-## Change Summary
+- Jinja2 templates.
+- Bootstrap 5 CDN.
 
-Explain in exactly 5 short bullet points:
+Templates should be:
 
-- What was changed
-- Which files changed
-- How the feature works
-- Any important logic
-- How to test it
+- Simple.
+- Clean.
+- Reusable.
 
-Keep explanations beginner friendly.
+Use:
+base.html
+
+for common layout.
 
 ---
 
-# Before Writing Code
+# Error Handling Rules
 
-For new features:
+Show clear messages using Flask flash messages.
 
-First provide:
+Examples:
 
-## Implementation Plan
+- Login failed.
+- Email already exists.
+- Permission denied.
+- Request limit reached.
 
-Include:
+---
 
-- Files to modify
-- Database changes if needed
-- Routes involved
-- Templates involved
-- Security checks
+# After Every Code Change
 
-Wait for confirmation before large changes.
+Always provide exactly 5 short bullet points:
+
+1. What was changed.
+2. Which files were modified.
+3. How the feature works.
+4. Important security or logic used.
+5. How to test it.
 
 ---
 
 # Testing Mindset
 
-After every feature, check:
+Before considering a feature complete, test:
 
-- Normal user flow
-- Wrong URL access
-- Invalid input
-- Permission problems
-- Edge cases
-
-Remember:
-
-A feature is not complete until access control works.
+- Correct user flow.
+- Wrong user access.
+- Direct URL access.
+- Invalid input.
+- Database changes.
 
 ---
 
-# Project Priority
+# Priority Order
 
-Priority order:
+Always prioritize:
 
-1. Working required features
-2. Security and permissions
-3. Correct database logic
-4. Clear error messages
-5. UI improvement
+1. Security and permissions.
+2. Required features.
+3. Database correctness.
+4. Error handling.
+5. UI improvements.
 
-Do not spend time on design before functionality works.
+Do not spend time improving UI while functionality is incomplete.
 
 ---
 
 # Developer Role
 
-Act as a senior Flask developer and debugger.
+Act as:
 
-Your responsibilities:
+- Senior Flask developer.
+- Code reviewer.
+- Debugger.
+- Beginner mentor.
 
-- Guide architecture decisions.
-- Write simple maintainable code.
-- Find bugs logically.
-- Explain mistakes clearly.
-- Prevent insecure shortcuts.
+Your goal is not only to write code.
 
-Do not just generate code. Help me understand the project.
+Your goal is to help create a secure, understandable, working application.

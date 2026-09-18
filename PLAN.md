@@ -1,20 +1,28 @@
 # LendIt: Department Equipment Loan Desk
 
-## Development Plan (PLAN.md)
-
-## Project Goal
-
-Build a web application that replaces the department's paper equipment loan register.
-
-Students can view equipment, create accounts, request equipment, and track their requests.
-
-Admins can manage equipment, approve or reject requests, and manage returns.
+## Project Development Plan
 
 ---
 
-# Project Rules
+# Project Goal
 
-## Technology Stack
+Build a Flask web application that replaces the department's paper equipment loan register.
+
+The system allows:
+
+- Public visitors to view available equipment.
+- Students to create accounts and request equipment.
+- Admins to manage equipment and approve/reject loan requests.
+
+The application must focus on:
+
+1. Required features working correctly.
+2. Backend security and access control.
+3. Simple code that can be explained easily.
+
+---
+
+# Technology Stack
 
 - Python 3
 - Flask
@@ -24,349 +32,343 @@ Admins can manage equipment, approve or reject requests, and manage returns.
 - Jinja2 Templates
 - Bootstrap 5 CDN
 
-## Development Rules
+---
 
-- Keep the code simple and beginner-friendly.
+# Development Rules
+
+- Keep the project beginner-friendly.
 - Do not add unnecessary libraries.
-- Focus on required features first.
-- Security and access control are higher priority than UI.
+- Complete required features before bonus features.
+- Every permission rule must work even when users manually type URLs.
+- Do not rely only on hidden buttons for security.
 
 ---
 
-# Feature 1: Project Setup
-
-## Goal
-
-Prepare the Flask project environment.
-
-## Tasks
-
-- [ ] Create Flask project structure
-- [ ] Create virtual environment
-- [ ] Install required packages
-- [ ] Configure Flask application
-- [ ] Configure SQLite database
-- [ ] Configure Bootstrap 5 CDN
-- [ ] Create basic templates structure
-- [ ] Confirm application runs successfully
-
-## Expected Result
-
-The Flask application starts successfully.
-
----
-
-# Feature 2: Database Design and Models
-
-## Goal
-
-Create the database structure required for the application.
-
----
-
-# Database Tables
+# Database Design
 
 ## Table 1: User
 
 Purpose:
+
 Stores student and admin accounts.
 
-| Column | Data Type | Size | Constraints | Description |
-|-|-|-|-|-|
-| id | Integer | - | Primary Key, Auto Increment | Unique user ID |
-| username | String | 50 characters | Unique, Not Null | User login name |
-| email | String | 120 characters | Unique, Not Null | User email address |
-| password_hash | String | 255 characters | Not Null | Encrypted password |
-| role | String | 20 characters | Not Null, Default: student | User permission level |
+| Column        | Type    | Size | Constraints                 | Description             |
+| ------------- | ------- | ---- | --------------------------- | ----------------------- |
+| id            | Integer | -    | Primary Key, Auto Increment | Unique user ID          |
+| username      | String  | 50   | Unique, Not Null            | User display/login name |
+| email         | String  | 120  | Unique, Not Null            | User email              |
+| password_hash | String  | 255  | Not Null                    | Hashed password         |
+| role          | String  | 20   | Not Null, Default: student  | student or admin        |
 
 ---
 
 ## Table 2: Equipment
 
 Purpose:
-Stores all department equipment.
 
-| Column | Data Type | Size | Constraints | Description |
-|-|-|-|-|-|
-| id | Integer | - | Primary Key, Auto Increment | Unique equipment ID |
-| name | String | 100 characters | Not Null | Equipment name |
-| category | String | 50 characters | Not Null | Equipment category |
-| description | Text | - | Nullable | Equipment details |
-| status | String | 20 characters | Not Null, Default: Available | Available or On loan |
+Stores department equipment information.
+
+| Column      | Type    | Size | Constraints                  | Description          |
+| ----------- | ------- | ---- | ---------------------------- | -------------------- |
+| id          | Integer | -    | Primary Key, Auto Increment  | Equipment ID         |
+| name        | String  | 100  | Not Null                     | Equipment name       |
+| category    | String  | 50   | Not Null                     | Equipment category   |
+| description | Text    | -    | Nullable                     | Equipment details    |
+| status      | String  | 20   | Not Null, Default: Available | Available or On loan |
 
 ---
 
 ## Table 3: Request
 
 Purpose:
+
 Stores equipment loan requests.
 
-| Column | Data Type | Size | Constraints | Description |
-|-|-|-|-|-|
-| id | Integer | - | Primary Key, Auto Increment | Unique request ID |
-| user_id | Integer | - | Foreign Key, Not Null | Student who requested |
-| equipment_id | Integer | - | Foreign Key, Not Null | Requested equipment |
-| return_by | Date | - | Not Null | Expected return date |
-| note | Text | - | Nullable | Optional student note |
-| status | String | 20 characters | Not Null, Default: Pending | Request status |
-| created_at | DateTime | - | Not Null | Request creation time |
+| Column       | Type     | Size | Constraints                 | Description           |
+| ------------ | -------- | ---- | --------------------------- | --------------------- |
+| id           | Integer  | -    | Primary Key, Auto Increment | Request ID            |
+| user_id      | Integer  | -    | Foreign Key, Not Null       | Student who requested |
+| equipment_id | Integer  | -    | Foreign Key, Not Null       | Requested equipment   |
+| return_by    | Date     | -    | Not Null                    | Expected return date  |
+| note         | Text     | -    | Nullable                    | Optional student note |
+| status       | String   | 20   | Not Null, Default: Pending  | Request status        |
+| created_at   | DateTime | -    | Not Null                    | Request creation date |
 
 ---
 
 # Database Relationships
 
-## User and Request Relationship
-
-One User can create many Requests.
+## User and Request
 
 Relationship:
 User (1) -------- (Many) Request
 
-Example:
+Explanation:
 
-A student can request multiple equipment items.
+One user can create multiple equipment requests.
 
 ---
 
-## Equipment and Request Relationship
-
-One Equipment can have many Requests over time.
+## Equipment and Request
 
 Relationship:
 Equipment (1) -------- (Many) Request
 
-Example:
+Explanation:
 
-A camera can be requested many times by different students.
+One equipment item can have many requests over time.
 
 ---
 
-# Feature 3: Authentication and User Roles
+# Application Routes
 
-## Goal
+---
 
-Create account management system.
+# Public Routes
+
+| URL       | Method    | Purpose                    | Login Required |
+| --------- | --------- | -------------------------- | -------------- |
+| `/`       | GET       | Public equipment catalogue | No             |
+| `/signup` | GET, POST | Create account             | No             |
+| `/login`  | GET, POST | Login user                 | No             |
+| `/logout` | GET       | Logout user                | Yes            |
+
+---
+
+# Student Routes
+
+| URL                            | Method    | Purpose                    | Login Required |
+| ------------------------------ | --------- | -------------------------- | -------------- |
+| `/dashboard`                   | GET       | Student dashboard          | Yes            |
+| `/request/<equipment_id>`      | GET, POST | Request equipment          | Yes            |
+| `/my-requests`                 | GET       | View own requests          | Yes            |
+| `/request/<request_id>/cancel` | POST      | Cancel own pending request | Yes            |
+
+Rules:
+
+- Student can only view own requests.
+- Student can only cancel own pending requests.
+- Maximum 2 active requests allowed.
+- Return date must be future.
+
+---
+
+# Admin Routes
+
+| URL                            | Method    | Purpose                   | Login Required |
+| ------------------------------ | --------- | ------------------------- | -------------- |
+| `/admin`                       | GET       | Admin dashboard           | Yes            |
+| `/admin/equipment`             | GET       | Equipment management page | Yes            |
+| `/admin/equipment/add`         | GET, POST | Add equipment             | Yes            |
+| `/admin/equipment/<id>/edit`   | GET, POST | Edit equipment            | Yes            |
+| `/admin/equipment/<id>/delete` | POST      | Delete equipment          | Yes            |
+| `/admin/requests`              | GET       | View loan requests        | Yes            |
+| `/admin/request/<id>/approve`  | POST      | Approve request           | Yes            |
+| `/admin/request/<id>/reject`   | POST      | Reject request            | Yes            |
+| `/admin/request/<id>/return`   | POST      | Mark returned             | Yes            |
+
+Rules:
+
+- Only admin users can access admin routes.
+- Cannot approve equipment already on loan.
+- Returning equipment changes status to Available.
+
+---
+
+# Feature 1: Project Setup
 
 ## Tasks
 
-- [ ] Create signup page
-- [ ] Create login page
-- [ ] Create logout system
-- [ ] Hash passwords using werkzeug.security
-- [ ] Add Flask-Login authentication
-- [ ] Set default role as student
-- [ ] Create admin account method
-- [ ] Document admin login in README
+- [ ] Create Flask project structure
+- [ ] Setup virtual environment
+- [ ] Install required packages
+- [ ] Create requirements.txt
+- [ ] Configure Flask application
+- [ ] Configure SQLite
+- [ ] Add Bootstrap CDN
+- [ ] Confirm application runs
 
-## Expected Result
+---
 
-Students and admins can log in with correct permissions.
+# Feature 2: Database Models
+
+## Tasks
+
+- [ ] Create User model
+- [ ] Create Equipment model
+- [ ] Create Request model
+- [ ] Add relationships
+- [ ] Create database tables
+
+Expected Result:
+
+Database structure works correctly.
+
+---
+
+# Feature 3: Authentication and Roles
+
+## Tasks
+
+- [ ] Signup system
+- [ ] Login system
+- [ ] Logout system
+- [ ] Flask-Login setup
+- [ ] Password hashing
+- [ ] Student default role
+- [ ] Admin creation method
+- [ ] README admin login documentation
+
+Expected Result:
+
+Users can login with correct permissions.
 
 ---
 
 # Feature 4: Public Equipment Catalogue
 
-## Goal
-
-Allow anyone to view available equipment.
-
 ## Tasks
 
-- [ ] Create public equipment page
-- [ ] Display equipment name
-- [ ] Display category
-- [ ] Display description
-- [ ] Display current status
-- [ ] Add search by name
-- [ ] Add category filter
+- [ ] Create equipment listing page
+- [ ] Show name
+- [ ] Show category
+- [ ] Show description
+- [ ] Show availability status
+- [ ] Search by name
+- [ ] Filter by category
 - [ ] Hide borrower information
-
-## Expected Result
-
-Logged-out visitors can browse equipment safely.
 
 ---
 
-# Feature 5: Student Equipment Request System
-
-## Goal
-
-Allow students to request equipment.
+# Feature 5: Student Request System
 
 ## Tasks
 
-- [ ] Create request form
-- [ ] Allow request only for available equipment
-- [ ] Add return date validation
+- [ ] Request available equipment
+- [ ] Add return-by date
+- [ ] Validate future date
 - [ ] Add optional note
-- [ ] Limit active requests to maximum 2
-- [ ] Show clear error message after limit
+- [ ] Limit active requests to 2
 - [ ] Create My Requests page
-- [ ] Show request status:
-    - Pending
-    - Approved
-    - Rejected
-    - Returned
-    - Cancelled
+- [ ] Show request statuses
+- [ ] Cancel own pending request
 
-- [ ] Allow cancellation of own pending requests only
+Statuses:
 
-## Expected Result
-
-Students can manage their own requests.
+- Pending
+- Approved
+- Rejected
+- Returned
+- Cancelled
 
 ---
 
 # Feature 6: Admin Equipment Management
 
-## Goal
-
-Allow admins to manage equipment.
-
 ## Tasks
 
-- [ ] Create admin equipment list
+- [ ] View equipment
 - [ ] Add equipment
 - [ ] Edit equipment
 - [ ] Delete equipment
 
 Security:
 
-- [ ] Only admins can access these routes
-
-## Expected Result
-
-Admins can maintain equipment records.
+- [ ] Only admin can perform actions
 
 ---
 
 # Feature 7: Admin Request Management
-
-## Goal
-
-Allow admins to control equipment loans.
 
 ## Tasks
 
 - [ ] View pending requests
 - [ ] Approve requests
 - [ ] Reject requests
-- [ ] Mark approved loans as returned
+- [ ] Mark returned
 
 Rules:
 
 - [ ] Approval changes equipment status to On loan
-- [ ] Returned equipment changes status to Available
-- [ ] Cannot approve already borrowed equipment
-
-## Expected Result
-
-Complete loan workflow works correctly.
+- [ ] Return changes status to Available
+- [ ] Cannot approve unavailable equipment
 
 ---
 
-# Feature 8: Access Control and Security Testing
+# Feature 8: Security Testing
 
-## Goal
-
-Ensure rules work even through direct URL access.
-
-## Tasks
-
-Test:
+## Test:
 
 - [ ] Student cannot access admin pages
 - [ ] Student cannot approve requests
-- [ ] Student cannot reject requests
 - [ ] Student cannot delete equipment
 - [ ] Student cannot cancel another user's request
-- [ ] Users cannot view other users' private requests
-
-## Expected Result
-
-Application is secure against URL attacks.
+- [ ] Direct URL attacks blocked
+- [ ] Ownership checks work
 
 ---
 
-# Feature 9: Overdue Management
-
-## Goal
-
-Show overdue equipment to admins.
+# Feature 9: Overdue System
 
 ## Tasks
 
-- [ ] Check approved loans where return date has passed
+- [ ] Detect approved loans past return date
 - [ ] Show Overdue badge
-- [ ] Highlight overdue loans in red
-- [ ] Returned loans should not count as overdue
-
-## Expected Result
-
-Admins can identify overdue equipment.
+- [ ] Highlight overdue loans
+- [ ] Returned loans are not overdue
 
 ---
 
-# Feature 10: Bonus Features (Only After Required Features)
+# Feature 10: Bonus Features
 
-Optional:
+Only after all required features work.
 
 - [ ] Admin dashboard counts
-    - Total items
-    - On loan items
-    - Overdue items
-    - Pending requests
-
 - [ ] Request history per item
 - [ ] Item photo upload
-- [ ] CSV export of current loans
+- [ ] CSV export
 
 ---
 
 # Final Testing
 
-## Application Testing
+## Features
 
 - [ ] Signup works
 - [ ] Login works
 - [ ] Logout works
-- [ ] Equipment catalogue works
+- [ ] Catalogue works
 - [ ] Search works
 - [ ] Category filter works
-- [ ] Student request works
+- [ ] Request system works
 - [ ] Request limit works
-- [ ] Cancel request works
+- [ ] Cancellation works
 - [ ] Admin approval works
-- [ ] Admin rejection works
-- [ ] Return process works
-- [ ] Overdue detection works
+- [ ] Return system works
+- [ ] Overdue system works
 
 ---
 
-## Security Testing
+## Security
 
-- [ ] Student cannot access admin URLs
-- [ ] Student cannot modify other users' requests
-- [ ] Student cannot delete equipment
-- [ ] Direct URL attacks blocked
-- [ ] Permissions checked on backend
+- [ ] Authentication protection works
+- [ ] Role protection works
+- [ ] Ownership protection works
+- [ ] Direct URL testing completed
 
 ---
 
-## Documentation Testing
+## Documentation
 
 - [ ] README.md completed
 - [ ] PLAN.md completed
 - [ ] mistakes.md updated
-- [ ] Admin login details added
-- [ ] AI tools usage documented
+- [ ] AI usage documented
 
 ---
 
 # Project Completion
 
-Status:
-
 - [ ] All required features completed
-- [ ] Security tested
+- [ ] Tested successfully
 - [ ] Ready for GitHub submission
