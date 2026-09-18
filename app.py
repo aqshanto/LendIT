@@ -13,7 +13,7 @@ from flask_login import (
     logout_user,
 )
 
-from models import db, User
+from models import db, Equipment, User
 
 # Read values from the .env file (SECRET_KEY, etc.)
 load_dotenv()
@@ -52,8 +52,42 @@ def load_user(user_id):
 
 @app.route("/")
 def home():
-    """Public homepage. For now it only shows a project running message."""
-    return render_template("index.html")
+    """Public equipment catalogue. Anyone can open it, even without logging in.
+
+    Only the Equipment table is read here. Requests and users are never touched,
+    so the page cannot show who borrowed an item.
+    """
+    search = request.args.get("search", "").strip()
+    category = request.args.get("category", "").strip()
+
+    # Start with all equipment, then narrow it down.
+    equipment_query = Equipment.query
+
+    if search:
+        # ilike means "contains, ignoring capital letters".
+        equipment_query = equipment_query.filter(Equipment.name.ilike(f"%{search}%"))
+
+    if category:
+        equipment_query = equipment_query.filter(Equipment.category == category)
+
+    equipment_list = equipment_query.order_by(Equipment.name).all()
+
+    # Every category that exists, used to fill the filter dropdown.
+    category_rows = (
+        db.session.query(Equipment.category)
+        .distinct()
+        .order_by(Equipment.category)
+        .all()
+    )
+    categories = [row[0] for row in category_rows]
+
+    return render_template(
+        "index.html",
+        equipment_list=equipment_list,
+        categories=categories,
+        search=search,
+        selected_category=category,
+    )
 
 
 @app.route("/signup", methods=["GET", "POST"])
