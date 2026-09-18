@@ -13,6 +13,7 @@
                 <p class="text-muted">{{ item.category }} - {{ item.description or "No description" }}</p>
 
                 <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <div class="mb-3">
                         <label class="form-label" for="return_by">Return by</label>
                         <input type="date" class="form-control" id="return_by" name="return_by"

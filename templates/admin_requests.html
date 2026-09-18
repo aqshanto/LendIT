@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}Loan Requests - LendIt{% endblock %}
+
+{% block content %}
+<h1 class="mb-1">Loan Requests</h1>
+<p class="text-muted">Admin only page.</p>
+
+{% if request_list %}
+    <div class="card">
+        <table class="table table-striped mb-0 align-middle">
+            <thead>
+                <tr>
+                    <th>Student</th>
+                    <th>Equipment</th>
+                    <th>Return by</th>
+                    <th>Note</th>
+                    <th>Requested on</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for loan_request in request_list %}
+                    <tr>
+                        <td>{{ loan_request.user.username }}</td>
+                        <td>
+                            {{ loan_request.equipment.name }}
+                            {% if loan_request.equipment.status == "On loan" %}
+                                <span class="badge bg-secondary">On loan</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ loan_request.return_by }}</td>
+                        <td>{{ loan_request.note or "-" }}</td>
+                        <td>{{ loan_request.created_at.strftime("%Y-%m-%d") }}</td>
+                        <td>
+                            {% if loan_request.status == "Pending" %}
+                                <span class="badge bg-warning text-dark">Pending</span>
+                            {% elif loan_request.status == "Approved" %}
+                                <span class="badge bg-success">Approved</span>
+                            {% elif loan_request.status == "Rejected" %}
+                                <span class="badge bg-danger">Rejected</span>
+                            {% elif loan_request.status == "Returned" %}
+                                <span class="badge bg-primary">Returned</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Cancelled</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <!-- These buttons only show the allowed actions.
+                                 Each route checks the status again before saving. -->
+                            {% if loan_request.status == "Pending" %}
+                                <form method="POST" class="d-inline"
+                                      action="{{ url_for('admin_request_approve', request_id=loan_request.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                                </form>
+                                <form method="POST" class="d-inline"
+                                      action="{{ url_for('admin_request_reject', request_id=loan_request.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Reject</button>
+                                </form>
+                            {% elif loan_request.status == "Approved" %}
+                                <form method="POST" class="d-inline"
+                                      action="{{ url_for('admin_request_return', request_id=loan_request.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-sm btn-primary">Mark Returned</button>
+                                </form>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <div class="alert alert-info">There are no loan requests yet.</div>
+{% endif %}
+{% endblock %}

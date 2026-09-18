@@ -2,10 +2,11 @@
 # Main Flask application file.
 
 import os
+import secrets
 from datetime import date, datetime
 
 from dotenv import load_dotenv
-from flask import Flask, abort, flash, redirect, render_template, request, url_for
+from flask import Flask, abort, flash, redirect, render_template, request, session, url_for
 from flask_login import (
     LoginManager,
     current_user,
@@ -30,6 +31,13 @@ if not app.config["SECRET_KEY"]:
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///lendit.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
+# Cookie safety.
+# HTTPONLY: JavaScript cannot read the login cookie.
+# SAMESITE: the browser does not send the cookie when another website
+# posts a form to us, which blocks cross site request forgery (CSRF).
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+
 # Connect the database object from models.py to this Flask app.
 db.init_app(app)
 
@@ -43,6 +51,31 @@ login_manager.init_app(app)
 login_manager.login_view = "login"
 login_manager.login_message = "Please log in first."
 login_manager.login_message_category = "warning"
+
+
+def csrf_token():
+    """Give this browser session one secret token, and reuse it."""
+    if "csrf_token" not in session:
+        session["csrf_token"] = secrets.token_hex(16)
+    return session["csrf_token"]
+
+
+# Templates can call csrf_token() inside any form.
+app.jinja_env.globals["csrf_token"] = csrf_token
+
+
+@app.before_request
+def check_csrf_token():
+    """Reject any POST that does not carry this session's token.
+
+    Another website can make your browser send a POST, but it cannot read
+    your token, so its POST is rejected before any route runs.
+    """
+    if request.method == "POST":
+        form_token = request.form.get("csrf_token", "")
+        real_token = session.get("csrf_token", "")
+        if not real_token or not secrets.compare_digest(form_token, real_token):
+            abort(400)
 
 
 @login_manager.user_loader
@@ -183,6 +216,17 @@ def count_active_requests(user_id):
     ).count()
 
 
+def check_equipment_fields(name, category):
+    """Return an error message for the equipment form, or None if it is fine."""
+    if not name or not category:
+        return "Name and category are required."
+    if len(name) > 100:
+        return "Name must be 100 characters or fewer."
+    if len(category) > 50:
+        return "Category must be 50 characters or fewer."
+    return None
+
+
 @app.route("/dashboard")
 @login_required
 def dashboard():
@@ -315,6 +359,233 @@ def cancel_request(request_id):
 
     flash("Request cancelled.", "success")
     return redirect(url_for("my_requests"))
+
+
+@app.route("/admin/equipment")
+@login_required
+def admin_equipment():
+    """Equipment management page. Admin only."""
+    if current_user.role != "admin":
+        flash("Permission denied.", "danger")
+        return redirect(url_for("home"))
+
+    equipment_list = Equipment.query.order_by(Equipment.name).all()
+    return render_template("admin_equipment.html", equipment_list=equipment_list)
+
+
+@app.route("/admin/equipment/add", methods=["GET", "POST"])
+@login_required
+def admin_equipment_add():
+    """Add a new equipment item. Admin only."""
+    if current_user.role != "admin":
+        flash("Permission denied.", "danger")
+        return redirect(url_for("home"))
+
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        category = request.form.get("category", "").strip()
+        description = request.form.get("description", "").strip()
+
+        error = check_equipment_fields(name, category)
+        if error:
+            flash(error, "danger")
+            return render_template(
+                "admin_equipment_form.html",
+                heading="Add Equipment",
+                form_action=url_for("admin_equipment_add"),
+                name=name,
+                category=category,
+                description=description,
+            )
+
+        # New equipment always starts as Available.
+        new_item = Equipment(
+            name=name,
+            category=category,
+            description=description or None,
+            status="Available",
+        )
+        db.session.add(new_item)
+        db.session.commit()
+
+        flash("Equipment added.", "success")
+        return redirect(url_for("admin_equipment"))
+
+    return render_template(
+        "admin_equipment_form.html",
+        heading="Add Equipment",
+        form_action=url_for("admin_equipment_add"),
+        name="",
+        category="",
+        description="",
+    )
+
+
+@app.route("/admin/equipment/<int:equipment_id>/edit", methods=["GET", "POST"])
+@login_required
+def admin_equipment_edit(equipment_id):
+    """Edit one equipment item. Admin only."""
+    if current_user.role != "admin":
+        flash("Permission denied.", "danger")
+        return redirect(url_for("home"))
+
+    item = db.session.get(Equipment, equipment_id)
+    if item is None:
+        abort(404)
+
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        category = request.form.get("category", "").strip()
+        description = request.form.get("description", "").strip()
+
+        error = check_equipment_fields(name, category)
+        if error:
+            flash(error, "danger")
+            return render_template(
+                "admin_equipment_form.html",
+                heading="Edit Equipment",
+                form_action=url_for("admin_equipment_edit", equipment_id=item.id),
+                name=name,
+                category=category,
+                description=description,
+            )
+
+        # The status is not edited here. Feature 7 changes it
+        # when a request is approved or returned.
+        item.name = name
+        item.category = category
+        item.description = description or None
+        db.session.commit()
+
+        flash("Equipment updated.", "success")
+        return redirect(url_for("admin_equipment"))
+
+    return render_template(
+        "admin_equipment_form.html",
+        heading="Edit Equipment",
+        form_action=url_for("admin_equipment_edit", equipment_id=item.id),
+        name=item.name,
+        category=item.category,
+        description=item.description or "",
+    )
+
+
+@app.route("/admin/equipment/<int:equipment_id>/delete", methods=["POST"])
+@login_required
+def admin_equipment_delete(equipment_id):
+    """Delete one equipment item. Admin only."""
+    if current_user.role != "admin":
+        flash("Permission denied.", "danger")
+        return redirect(url_for("home"))
+
+    item = db.session.get(Equipment, equipment_id)
+    if item is None:
+        abort(404)
+
+    # Requests point at this equipment. Deleting it would break the
+    # loan history, so it is not allowed while requests exist.
+    request_count = Request.query.filter_by(equipment_id=item.id).count()
+    if request_count > 0:
+        flash("Cannot delete this equipment because it has loan requests.", "warning")
+        return redirect(url_for("admin_equipment"))
+
+    db.session.delete(item)
+    db.session.commit()
+
+    flash("Equipment deleted.", "success")
+    return redirect(url_for("admin_equipment"))
+
+
+@app.route("/admin/requests")
+@login_required
+def admin_requests():
+    """Show every loan request. Admin only."""
+    if current_user.role != "admin":
+        flash("Permission denied.", "danger")
+        return redirect(url_for("home"))
+
+    request_list = Request.query.order_by(Request.created_at.desc()).all()
+    return render_template("admin_requests.html", request_list=request_list)
+
+
+@app.route("/admin/request/<int:request_id>/approve", methods=["POST"])
+@login_required
+def admin_request_approve(request_id):
+    """Approve a pending request and mark the equipment as On loan."""
+    if current_user.role != "admin":
+        flash("Permission denied.", "danger")
+        return redirect(url_for("home"))
+
+    loan_request = db.session.get(Request, request_id)
+    if loan_request is None:
+        abort(404)
+
+    if loan_request.status != "Pending":
+        flash("Only pending requests can be approved.", "warning")
+        return redirect(url_for("admin_requests"))
+
+    item = loan_request.equipment
+
+    # The item must be free. This is what stops two students
+    # being approved for the same equipment.
+    if item.status != "Available":
+        flash("Equipment is currently unavailable.", "warning")
+        return redirect(url_for("admin_requests"))
+
+    loan_request.status = "Approved"
+    item.status = "On loan"
+    db.session.commit()
+
+    flash("Request approved.", "success")
+    return redirect(url_for("admin_requests"))
+
+
+@app.route("/admin/request/<int:request_id>/reject", methods=["POST"])
+@login_required
+def admin_request_reject(request_id):
+    """Reject a pending request. The equipment is not changed."""
+    if current_user.role != "admin":
+        flash("Permission denied.", "danger")
+        return redirect(url_for("home"))
+
+    loan_request = db.session.get(Request, request_id)
+    if loan_request is None:
+        abort(404)
+
+    if loan_request.status != "Pending":
+        flash("Only pending requests can be rejected.", "warning")
+        return redirect(url_for("admin_requests"))
+
+    loan_request.status = "Rejected"
+    db.session.commit()
+
+    flash("Request rejected.", "success")
+    return redirect(url_for("admin_requests"))
+
+
+@app.route("/admin/request/<int:request_id>/return", methods=["POST"])
+@login_required
+def admin_request_return(request_id):
+    """Mark an approved loan as returned and free the equipment."""
+    if current_user.role != "admin":
+        flash("Permission denied.", "danger")
+        return redirect(url_for("home"))
+
+    loan_request = db.session.get(Request, request_id)
+    if loan_request is None:
+        abort(404)
+
+    # Only equipment that is really on loan can come back.
+    if loan_request.status != "Approved":
+        flash("Only approved requests can be returned.", "warning")
+        return redirect(url_for("admin_requests"))
+
+    loan_request.status = "Returned"
+    loan_request.equipment.status = "Available"
+    db.session.commit()
+
+    flash("Equipment marked as returned.", "success")
+    return redirect(url_for("admin_requests"))
 
 
 if __name__ == "__main__":

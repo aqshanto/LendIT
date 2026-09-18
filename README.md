@@ -103,4 +103,20 @@ account with the script.
 - `SECRET_KEY` is loaded from `.env` and is never hardcoded.
 - Login errors show one message for a wrong email and a wrong password, so the
   form cannot be used to find out which emails are registered.
-- `/logout` is protected with `@login_required`.
+- Every private page uses `@login_required`, and every admin action also checks
+  `current_user.role == "admin"` inside the route. Hiding a button is never the
+  protection: typing the URL directly is blocked too.
+- Students can only see and cancel their own requests. Ownership is checked in
+  the route by comparing the request's `user_id` with the logged in user.
+- All actions that change data (approve, reject, return, delete, cancel) are
+  POST only. Opening those URLs in the browser gives "405 Method Not Allowed".
+- Every form carries a CSRF token from the session. A POST without the correct
+  token is rejected with "400 Bad Request", so another website cannot submit
+  forms using your login.
+- The session cookie is HttpOnly and SameSite=Lax.
+
+### Before putting this on a real server
+
+`python app.py` runs Flask in debug mode, which exposes the Werkzeug debug
+console at `/console`. That is fine on your own computer, but debug mode must
+be turned off before the app is reachable by anyone else.
