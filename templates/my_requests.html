@@ -20,15 +20,23 @@
             </thead>
             <tbody>
                 {% for loan_request in my_request_list %}
-                    <tr>
+                    <tr {% if loan_request.is_overdue() %}class="table-danger"{% endif %}>
                         <td>{{ loan_request.equipment.name }}</td>
-                        <td>{{ loan_request.return_by }}</td>
+                        <td>
+                            {{ loan_request.return_by }}
+                            {% if loan_request.is_overdue() %}
+                                <span class="badge bg-danger">Overdue</span>
+                            {% endif %}
+                        </td>
                         <td>{{ loan_request.note or "-" }}</td>
                         <td>
                             {% if loan_request.status == "Pending" %}
                                 <span class="badge bg-warning text-dark">Pending</span>
                             {% elif loan_request.status == "Approved" %}
                                 <span class="badge bg-success">Approved</span>
+                                {% if loan_request.is_overdue() %}
+                                    <span class="badge bg-danger">Overdue</span>
+                                {% endif %}
                             {% elif loan_request.status == "Rejected" %}
                                 <span class="badge bg-danger">Rejected</span>
                             {% elif loan_request.status == "Returned" %}

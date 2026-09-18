@@ -1,7 +1,7 @@
 # Database models for LendIt.
 # Three tables only: User, Equipment, Request.
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
@@ -70,6 +70,15 @@ class Request(db.Model):
         nullable=False,
         default=lambda: datetime.now(timezone.utc),
     )
+
+    def is_overdue(self):
+        """True when an approved loan is past its return date.
+
+        Only approved loans can be overdue. Pending, Rejected, Cancelled
+        and Returned requests are never overdue, and a loan due today is
+        not overdue yet.
+        """
+        return self.status == "Approved" and self.return_by < date.today()
 
     def __repr__(self):
         return f"<Request {self.id} status={self.status}>"
