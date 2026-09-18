@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - LendIt{% endblock %}
+
+{% block content %}
+<h1 class="mb-1">Welcome, {{ current_user.username }}</h1>
+<p class="text-muted">Student dashboard</p>
+
+<div class="row g-3 my-2">
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h2 class="card-title">{{ active_count }}</h2>
+                <p class="card-text text-muted mb-0">Active requests</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h2 class="card-title">{{ slots_left }}</h2>
+                <p class="card-text text-muted mb-0">Requests left (limit 2)</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card text-center">
+            <div class="card-body">
+                <h2 class="card-title">{{ total_count }}</h2>
+                <p class="card-text text-muted mb-0">Requests in total</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<a href="{{ url_for('home') }}" class="btn btn-primary">Browse Equipment</a>
+<a href="{{ url_for('my_requests') }}" class="btn btn-outline-secondary">My Requests</a>
+{% endblock %}

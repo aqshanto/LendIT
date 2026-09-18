@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}My Requests - LendIt{% endblock %}
+
+{% block content %}
+<h1 class="mb-1">My Requests</h1>
+<p class="text-muted">Only your own requests are shown here.</p>
+
+{% if my_request_list %}
+    <div class="card">
+        <table class="table table-striped mb-0">
+            <thead>
+                <tr>
+                    <th>Equipment</th>
+                    <th>Return by</th>
+                    <th>Note</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for loan_request in my_request_list %}
+                    <tr>
+                        <td>{{ loan_request.equipment.name }}</td>
+                        <td>{{ loan_request.return_by }}</td>
+                        <td>{{ loan_request.note or "-" }}</td>
+                        <td>
+                            {% if loan_request.status == "Pending" %}
+                                <span class="badge bg-warning text-dark">Pending</span>
+                            {% elif loan_request.status == "Approved" %}
+                                <span class="badge bg-success">Approved</span>
+                            {% elif loan_request.status == "Rejected" %}
+                                <span class="badge bg-danger">Rejected</span>
+                            {% elif loan_request.status == "Returned" %}
+                                <span class="badge bg-primary">Returned</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Cancelled</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <!-- The button only shows for pending requests,
+                                 but the route checks the status again. -->
+                            {% if loan_request.status == "Pending" %}
+                                <form method="POST"
+                                      action="{{ url_for('cancel_request', request_id=loan_request.id) }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Cancel</button>
+                                </form>
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <div class="alert alert-info">
+        You have no requests yet.
+        <a href="{{ url_for('home') }}">Browse the equipment catalogue</a>.
+    </div>
+{% endif %}
+{% endblock %}

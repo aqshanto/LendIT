@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Request Equipment - LendIt{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h2 class="card-title mb-3">Request Equipment</h2>
+
+                <p class="mb-1"><strong>{{ item.name }}</strong></p>
+                <p class="text-muted">{{ item.category }} - {{ item.description or "No description" }}</p>
+
+                <form method="POST">
+                    <div class="mb-3">
+                        <label class="form-label" for="return_by">Return by</label>
+                        <input type="date" class="form-control" id="return_by" name="return_by"
+                               min="{{ today }}" required>
+                        <div class="form-text">The date must be in the future.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label" for="note">Note (optional)</label>
+                        <textarea class="form-control" id="note" name="note" rows="3"></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Send Request</button>
+                    <a href="{{ url_for('home') }}" class="btn btn-outline-secondary">Cancel</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

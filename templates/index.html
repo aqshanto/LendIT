@@ -40,6 +40,9 @@
                     <th>Category</th>
                     <th>Description</th>
                     <th>Status</th>
+                    {% if current_user.is_authenticated and current_user.role == "student" %}
+                        <th>Action</th>
+                    {% endif %}
                 </tr>
             </thead>
             <tbody>
@@ -57,6 +60,18 @@
                                 <span class="badge bg-secondary">On loan</span>
                             {% endif %}
                         </td>
+                        {% if current_user.is_authenticated and current_user.role == "student" %}
+                            <td>
+                                <!-- The button is hidden for items on loan, but the
+                                     request route checks availability again. -->
+                                {% if item.status == "Available" %}
+                                    <a class="btn btn-sm btn-primary"
+                                       href="{{ url_for('request_equipment', equipment_id=item.id) }}">Request</a>
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                        {% endif %}
                     </tr>
                 {% endfor %}
             </tbody>

@@ -2,9 +2,10 @@
 # Main Flask application file.
 
 import os
+from datetime import date, datetime
 
 from dotenv import load_dotenv
-from flask import Flask, flash, redirect, render_template, request, url_for
+from flask import Flask, abort, flash, redirect, render_template, request, url_for
 from flask_login import (
     LoginManager,
     current_user,
@@ -13,7 +14,7 @@ from flask_login import (
     logout_user,
 )
 
-from models import db, Equipment, User
+from models import db, Equipment, Request, User
 
 # Read values from the .env file (SECRET_KEY, etc.)
 load_dotenv()
@@ -168,6 +169,152 @@ def logout():
     logout_user()
     flash("You have been logged out.", "success")
     return redirect(url_for("home"))
+
+
+# A request still using up a student's limit.
+ACTIVE_STATUSES = ["Pending", "Approved"]
+
+
+def count_active_requests(user_id):
+    """How many requests of this user are still Pending or Approved."""
+    return Request.query.filter(
+        Request.user_id == user_id,
+        Request.status.in_(ACTIVE_STATUSES),
+    ).count()
+
+
+@app.route("/dashboard")
+@login_required
+def dashboard():
+    """Student dashboard with a short summary."""
+    if current_user.role != "student":
+        flash("Permission denied.", "danger")
+        return redirect(url_for("home"))
+
+    active_count = count_active_requests(current_user.id)
+    total_count = Request.query.filter_by(user_id=current_user.id).count()
+
+    return render_template(
+        "dashboard.html",
+        active_count=active_count,
+        total_count=total_count,
+        slots_left=2 - active_count,
+    )
+
+
+@app.route("/request/<int:equipment_id>", methods=["GET", "POST"])
+@login_required
+def request_equipment(equipment_id):
+    """Request one equipment item."""
+    if current_user.role != "student":
+        flash("Permission denied.", "danger")
+        return redirect(url_for("home"))
+
+    item = db.session.get(Equipment, equipment_id)
+    if item is None:
+        abort(404)
+
+    if item.status != "Available":
+        flash("Equipment is currently unavailable.", "warning")
+        return redirect(url_for("home"))
+
+    # The limit is checked here and again below, so it also blocks a
+    # student who opens the form in two tabs.
+    if count_active_requests(current_user.id) >= 2:
+        flash("You cannot request more than 2 active items.", "warning")
+        return redirect(url_for("my_requests"))
+
+    # One active request per item is enough.
+    already_requested = Request.query.filter(
+        Request.user_id == current_user.id,
+        Request.equipment_id == item.id,
+        Request.status.in_(ACTIVE_STATUSES),
+    ).first()
+    if already_requested:
+        flash("You already have an active request for this item.", "warning")
+        return redirect(url_for("my_requests"))
+
+    if request.method == "POST":
+        return_by_text = request.form.get("return_by", "").strip()
+        note = request.form.get("note", "").strip()
+
+        if not return_by_text:
+            flash("Please choose a return date.", "danger")
+            return render_template("request_form.html", item=item, today=date.today())
+
+        # The date arrives as text like 2026-12-01 and must be a real date.
+        try:
+            return_by = datetime.strptime(return_by_text, "%Y-%m-%d").date()
+        except ValueError:
+            flash("Please enter a valid return date.", "danger")
+            return render_template("request_form.html", item=item, today=date.today())
+
+        if return_by <= date.today():
+            flash("Return date must be in the future.", "danger")
+            return render_template("request_form.html", item=item, today=date.today())
+
+        new_request = Request(
+            user_id=current_user.id,
+            equipment_id=item.id,
+            return_by=return_by,
+            note=note or None,
+            status="Pending",
+        )
+        db.session.add(new_request)
+        db.session.commit()
+
+        # The equipment stays Available until an admin approves the request.
+        flash("Request sent. Please wait for admin approval.", "success")
+        return redirect(url_for("my_requests"))
+
+    return render_template("request_form.html", item=item, today=date.today())
+
+
+@app.route("/my-requests")
+@login_required
+def my_requests():
+    """Show only the requests of the logged in student."""
+    if current_user.role != "student":
+        flash("Permission denied.", "danger")
+        return redirect(url_for("home"))
+
+    # Filtering by current_user.id means other students' requests
+    # are never loaded from the database.
+    my_request_list = (
+        Request.query.filter_by(user_id=current_user.id)
+        .order_by(Request.created_at.desc())
+        .all()
+    )
+
+    return render_template("my_requests.html", my_request_list=my_request_list)
+
+
+@app.route("/request/<int:request_id>/cancel", methods=["POST"])
+@login_required
+def cancel_request(request_id):
+    """Cancel one of your own pending requests."""
+    if current_user.role != "student":
+        flash("Permission denied.", "danger")
+        return redirect(url_for("home"))
+
+    loan_request = db.session.get(Request, request_id)
+    if loan_request is None:
+        abort(404)
+
+    # Ownership check: you may only touch your own request.
+    if loan_request.user_id != current_user.id:
+        flash("Permission denied.", "danger")
+        return redirect(url_for("my_requests"))
+
+    if loan_request.status != "Pending":
+        flash("Only pending requests can be cancelled.", "warning")
+        return redirect(url_for("my_requests"))
+
+    loan_request.status = "Cancelled"
+    db.session.commit()
+
+    flash("Request cancelled.", "success")
+    return redirect(url_for("my_requests"))
 
 
 if __name__ == "__main__":
